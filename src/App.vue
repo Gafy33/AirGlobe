@@ -4,59 +4,86 @@ import {
   WebGLRenderer,
   Scene,
   Mesh,
-  MeshBasicMaterial,
   MeshLambertMaterial,
   OctahedronGeometry,
-} from "three";
-import { InteractionManager } from "three.interactive";
-import {
   PerspectiveCamera,
   AmbientLight,
   DirectionalLight,
   Color,
   Fog,
   PointLight,
+  Vector3,
 } from "three";
+import { InteractionManager } from "three.interactive";
+import Stats from "stats.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import countries from "./assets/globe-data-min.json";
 import { onMounted, ref } from "vue";
-import airports from "./assets/airport.json";
-import { randFloat } from "three/src/math/MathUtils";
+import axios from "axios";
 
-const body = ref();
+import Load from "@/components/Load.vue";
 
-onMounted(() => {
-  var renderer: any,
+const canvasGlobe = ref();
+const ViewList = ref("plane");
+const countries = ref();
+const airports = ref();
+const load = ref(false);
+const messageLoad = ref("");
+
+onMounted(async () => {
+  let renderer: any,
     camera: any,
     scene: any,
     controls: any,
     interactionManager: any;
-  let windowHalfX = window.innerWidth / 2;
-  let windowHalfY = window.innerHeight / 2;
-  var Globe: any;
+  let Globe: any;
+  let stats: any;
 
-  init();
-  initGlobe();
-  onWindowResize();
-  animate();
+  await init();
+  await initGlobe();
+  await onWindowResize();
+  await animate();
+
+  function createStats() {
+    let stats: any = new Stats();
+    stats.setMode(0);
+    return stats;
+  }
+
+  async function getCountrie() {
+    messageLoad.value = "Récupération des continents";
+    const { data } = await axios.get("./assets/globe-data-min.json");
+    return data;
+  }
+
+  async function getAirport() {
+    messageLoad.value = "Récupération des aéroports";
+    const { data } = await axios.get("./assets/airport.json");
+    return data;
+  }
 
   // SECTION Initializing core ThreeJS elements
-  function init() {
+  async function init() {
+    countries.value = await getCountrie();
+    airports.value = await getAirport();
+
+    messageLoad.value = "Création de la planète";
     // Initialize renderer
     renderer = new WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(body.value.innerWidth, body.value.innerHeight);
-    // renderer.outputEncoding = THREE.sRGBEncoding;
-    body.value.appendChild(renderer.domElement);
+    renderer.setSize(
+      canvasGlobe.value.clientWidth,
+      canvasGlobe.value.clientHeight
+    );
+    canvasGlobe.value.appendChild(renderer.domElement);
 
     // Initialize scene, light
     scene = new Scene();
     scene.add(new AmbientLight(0xbbbbbb, 0.3));
-    scene.background = null;
 
     // Initialize camera, light
     camera = new PerspectiveCamera();
-    camera.aspect = body.value.innerWidth / body.value.innerHeight;
+    camera.aspect =
+      canvasGlobe.value.clientWidth / canvasGlobe.value.clientHeight;
     camera.updateProjectionMatrix();
 
     var dLight = new DirectionalLight(0xffffff, 0.8);
@@ -80,14 +107,6 @@ onMounted(() => {
     // Additional effects
     scene.fog = new Fog(0x535ef3, 400, 2000);
 
-    // Helpers
-    // const axesHelper = new AxesHelper(800);
-    // scene.add(axesHelper);
-    // var helper = new DirectionalLightHelper(dLight);
-    // scene.add(helper);
-    // var helperCamera = new CameraHelper(dLight.shadow.camera);
-    // scene.add(helperCamera);
-
     // Initialize controls
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -99,9 +118,6 @@ onMounted(() => {
     controls.zoomSpeed = 1;
     controls.autoRotate = false;
 
-    // controls.minPolarAngle = Math.PI / 3.5;
-    // controls.maxPolarAngle = Math.PI - Math.PI / 3;
-
     interactionManager = new InteractionManager(
       renderer,
       camera,
@@ -109,85 +125,82 @@ onMounted(() => {
     );
 
     window.addEventListener("resize", onWindowResize, false);
-    document.addEventListener("mousemove", onMouseMove);
+
+    stats = createStats();
+    document.body.appendChild(stats.domElement);
   }
 
   // SECTION Globe
-  function initGlobe() {
+  async function initGlobe() {
+    messageLoad.value = "Ajout des continents";
+    console.log(countries.value.features);
     // Initialize the Globe
     Globe = new ThreeGlobe({
       waitForGlobeReady: true,
       animateIn: true,
     })
-      .hexPolygonsData(countries.features)
-      .hexPolygonResolution(3)
-      .hexPolygonMargin(0.5)
       .objectLat("lat")
       .objectLng("lng")
       .objectAltitude("alt")
       .objectFacesSurface(false)
-      .showGraticules(true)
       .showAtmosphere(true)
       .atmosphereColor("#3a228a")
       .atmosphereAltitude(0.25)
+      .hexPolygonsData(countries.value.features)
+      .hexPolygonResolution(3)
+      .hexPolygonMargin(0.5)
       .hexPolygonColor((e: any) => {
         return "rgba(255,255,255, 1)";
-      })
-      .onGlobeReady(() => {
-        console.log("La terre est fini");
       });
 
+    messageLoad.value = "Ajout des avions";
+
     const satGeometry = new OctahedronGeometry(
-      (80 * Globe.getGlobeRadius()) / 6371 / 2,
+      (80 * Globe.getGlobeRadius()) / 6371 / 1.5,
       0
     );
-    const satMaterial = new MeshLambertMaterial({
-      color: "palegreen",
-      transparent: true,
-      opacity: 1,
-    });
 
-    const cube = new Mesh(satGeometry, satMaterial);
+    Globe.objectThreeObject((e: any) => {
+      const satMaterial = new MeshLambertMaterial({
+        color: "palegreen",
+        opacity: 1,
+      });
 
-    Globe.objectThreeObject(() => {
-      console.log(randFloat(1,1000))
-      const cube = new Mesh(satGeometry, satMaterial);
-      cube.addEventListener("mouseover", (event) => {
+      const cube: any = new Mesh(satGeometry, satMaterial);
+      cube.airportData = {
+        city: e.city,
+        country: e.country,
+        lat: e.lat,
+        lng: e.lng,
+      };
+      cube.addEventListener("mouseover", (event: any) => {
         event.target.material.color.set(0xff0000);
         document.body.style.cursor = "pointer";
       });
-      cube.addEventListener("mouseout", (event) => {
+      cube.addEventListener("mouseout", (event: any) => {
         event.target.material.color.set(0xffffff);
         document.body.style.cursor = "default";
       });
-      interactionManager.add(cube)
-      return cube
-      
+
+      cube.addEventListener("click", (event: any) => {
+        console.log(event.target);
+        console.log(Globe.toGeoCoords(event.target.parent.position))
+        camera.position.longitude(event.target.parent.position.x)
+      });
+
+      interactionManager.add(cube);
+      return cube;
     });
 
     // NOTE Arc animations are followed after the globe enters the scene
-    setTimeout(() => {
-      // console.log(airportHistory.airports)
-      // Globe.labelsData(airports_modif.airports)
-      //   .labelColor(() => "#ffcb21")
-      //   .labelDotRadius(0.3)
-      //   // .labelSize((e: { size: any; }) => e.size)
-      //   // .labelText("city")
-      //   // .labelResolution(6)
-      // .labelAltitude(0.01)
-
-      // Globe.pointsData(airports.airports)
-      //   .pointColor(() => "#00ff00")
-      //   .pointsMerge(true)
-      //   .pointAltitude(0.001)
-      //   .pointRadius(0.4);
-
-      airports.airports.forEach((d: any) => {
-        d.alt = 0.3;
-      });
-
-      Globe.objectsData(airports.airports);
-    }, 1000);
+    // console.log(airportHistory.airports)
+    // Globe.labelsData(airports_modif.airports)
+    //   .labelColor(() => "#ffcb21")
+    //   .labelDotRadius(0.3)
+    //   // .labelSize((e: { size: any; }) => e.size)
+    //   // .labelText("city")
+    //   // .labelResolution(6)
+    // .labelAltitude(0.01)
 
     Globe.rotateY(-Math.PI * (5 / 9));
     Globe.rotateZ(-Math.PI / 6);
@@ -196,25 +209,34 @@ onMounted(() => {
     globeMaterial.emissive = new Color(0x220038);
     globeMaterial.emissiveIntensity = 0.1;
     globeMaterial.shininess = 0.7;
-
-    // NOTE Cool stuff
-    // globeMaterial.wireframe = true;
-
     scene.add(Globe);
+
+    //ajouts des aéroports
+    Globe.pointsData(airports.value.airports)
+      .pointColor(() => "#00ff00")
+      .pointsMerge(true)
+      .pointAltitude(0.001)
+      .pointRadius(0.4);
+
+    //ajouts des planes
+    Globe.objectsData(airports.value.airports).objectAltitude(0.3);
+
+    setTimeout(() => {
+      load.value = true;
+    }, 1000);
   }
 
-  function onMouseMove(event: any) {
-    // mouseX = event.clientX - windowHalfX;
-    // mouseY = event.clientY - windowHalfY;
-    // console.log("x: " + mouseX + " y: " + mouseY);
+  async function getPlane(uuid: any) {
+    console.log(airports.value);
   }
-
-  function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+  async function onWindowResize() {
+    camera.aspect =
+      canvasGlobe.value.clientWidth / canvasGlobe.value.clientHeight;
     camera.updateProjectionMatrix();
-    windowHalfX = window.innerWidth / 1.5;
-    windowHalfY = window.innerHeight / 1.5;
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(
+      canvasGlobe.value.clientWidth,
+      canvasGlobe.value.clientHeight
+    );
   }
 
   function animate() {
@@ -222,18 +244,93 @@ onMounted(() => {
     interactionManager.update();
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
+    stats.update();
   }
 });
 </script>
 
 <template>
-  <div ref="body" class="w-full h-screen bg-violet-900"></div>
-  <!-- <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav> -->
-
-  <!-- <RouterView /> -->
+  <div class="relative w-full h-screen flex flex-row bg-main-primary z-[0]">
+    <div
+      class="relative w-1/5 h-full bg-main-primary border-r-4 border-main-secondary"
+    >
+      <div
+        class="text-2xl text-white font-extrabold text-center uppercase Orbitron h-[90px] flex justify-center items-center"
+      >
+        Air globe
+      </div>
+      <div class="relative flex flex-row bg-main-secondary h-[50px]">
+        <div
+          class="text-white text-xl w-14 h-full flex justify-center items-center"
+        >
+          <ion-icon name="search-outline"></ion-icon>
+        </div>
+        <input
+          type="text"
+          class="w-full pr-2 h-full bg-main-secondary text-white outline-none text-sm"
+          placeholder="Rechercher"
+        />
+      </div>
+      <div
+        class="relative flex flex-row h-[50px] border-b-4 border-main-secondary"
+      >
+        <div
+          class="h-full w-1/2 flex justify-center items-center text-white text-sm Orbitron cursor-pointer uppercase"
+          :class="
+            ViewList === 'plane'
+              ? 'bg-extra-secondary'
+              : 'hover:bg-extra-secondary'
+          "
+          @click="ViewList = 'plane'"
+        >
+          Avion
+        </div>
+        <div
+          class="h-full w-1/2 flex justify-center items-center text-white text-sm Orbitron hover:bg-extra-secondary cursor-pointer uppercase"
+          :class="
+            ViewList === 'airport'
+              ? 'bg-extra-secondary'
+              : 'hover:bg-extra-secondary'
+          "
+          @click="ViewList = 'airport'"
+        >
+          Aéroport
+        </div>
+      </div>
+      <div
+        class="relative flex-col h-[calc(100vh-190px)] overflow-y-auto"
+        :class="ViewList === 'plane' ? 'flex' : 'hidden'"
+        @click="ViewList = 'plane'"
+      >
+        <div
+          class="h-[50px] w-full flex justify-start items-center px-4 text-white text-sm Orbitron cursor-pointer uppercase hover:bg-extra-secondary"
+          @click="ViewList = 'plane'"
+        >
+          Avion
+        </div>
+      </div>
+      <div
+        class="relative flex-col h-[calc(100vh-190px)] overflow-y-auto"
+        :class="ViewList === 'airport' ? 'flex' : 'hidden'"
+        @click="ViewList = 'plane'"
+      >
+        <div
+          class="h-[50px] w-full flex justify-start items-center px-4 text-white text-sm Orbitron cursor-pointer uppercase hover:bg-extra-secondary"
+          @click="ViewList = 'plane'"
+        >
+          Avion
+        </div>
+      </div>
+    </div>
+    <div ref="canvasGlobe" class="relative w-4/5 h-full bg-main-primary"></div>
+  </div>
+  <div
+    class="absolute top-0 lef-0 w-full h-screen flex flex-col justify-center items-center bg-main-primary gap-10 z-[1]"
+    :class="!load ? 'flex' : 'hidden'"
+  >
+    <div class="text-white text-2xl Orbitron">{{ messageLoad }}</div>
+    <Load />
+  </div>
 
   <!-- <div class="flex flex-col w-full">
     [
@@ -251,3 +348,11 @@ onMounted(() => {
     ]
   </div> -->
 </template>
+
+<style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Orbitron&display=swap");
+
+.Orbitron {
+  font-family: "Orbitron", sans-serif;
+}
+</style>
