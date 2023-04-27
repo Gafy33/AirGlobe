@@ -13,6 +13,8 @@ const messageLoad = ref("");
 const search = ref("");
 const time = ref();
 
+const planeChoise = ref(false);
+
 onMounted(async () => {
   async function getCountrie() {
     messageLoad.value = "Récupération des continents";
@@ -29,14 +31,13 @@ onMounted(async () => {
   countries.value = await getCountrie();
   airports.value = await getAirport();
 
-  let max = 100;
+  let max = 200;
 
   const username = "Gafy33";
   const password = "Armalbdf33380";
 
   messageLoad.value = "Récupération des avions";
   getPlane();
-
 
   async function getPlane() {
     let count = 0;
@@ -81,12 +82,12 @@ onMounted(async () => {
   messageLoad.value = "Création de la planète";
   load.value = true;
 
-  const myFunction = () => {
-    getPlane();
-  };
-
-  setInterval(myFunction, 2000);
+  // setInterval(getPlane(), 2000);
 });
+
+const HandleplaneChoise = () => {
+  planeChoise.value = !planeChoise.value
+}
 </script>
 
 <template>
@@ -150,6 +151,7 @@ onMounted(async () => {
         class="relative flex-col h-[calc(100vh-190px)] overflow-y-auto"
         :class="ViewList === 'plane' ? 'flex' : 'hidden'"
       >
+        <!-- <button @click="HandleplaneChoise">{{planeChoise}}</button> -->
         <template v-if="planesRef">
           <template v-for="plane in planesRef">
             <template
@@ -194,7 +196,7 @@ onMounted(async () => {
                 "
               >
                 <div
-                  class="w-full flex flex-row gap-4 justify-start items-center px-4 py-4 text-white text-sm cursor-pointer uppercase hover:bg-extra-secondary border-b border-main-secondary/50"
+                  class="w-full flex flex-row gap-4 justify-start items-center px-4 h-[50px] shrink-0 text-white text-sm cursor-pointer uppercase hover:bg-extra-secondary border-b border-main-secondary/50"
                 >
                   <span class="bg-extra-primary p-1">{{ airport.icao }}</span>
                   <span class="text-xs normal-case"
@@ -209,11 +211,17 @@ onMounted(async () => {
       </div>
     </div>
     <template v-if="airports && countries && planesRef">
-      <Globe
-        :airports="airports.airports"
-        :countries="countries.features"
-        :planes="planesRef"
-      />
+      <div class="relative w-4/5 flex flex-row h-full bg-main-primary overflow-hidden">
+        <div class="relative bg-red-500 h-full duration-300 ease-in-out overflow-hidden" :class="planeChoise ? 'w-1/5': 'w-0'">
+          <button @click="HandleplaneChoise">Close</button>
+        </div>
+        <Globe
+          :airports="airports.airports"
+          :countries="countries.features"
+          :planes="planesRef"
+          :plane-choise="planeChoise"
+        />
+      </div>
     </template>
   </div>
   <div

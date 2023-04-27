@@ -6,13 +6,15 @@ import { onMounted, ref, watch } from "vue";
 
 const canvasGlobe = ref();
 const lastPLane = ref();
-const earth = ref();
+const earth:any  = ref();
 
 const props = defineProps({
   countries: Array as any,
   airports: Array as any,
   planes: Array as any,
+  planeChoise: Boolean,
 });
+
 
 onMounted(async () => {
 
@@ -26,17 +28,22 @@ onMounted(async () => {
     window.addEventListener("resize", onWindowResize, false);
     window.addEventListener("dblclick", function (e: any) {
       e.preventDefault();
-      let oldCoord: any = earth.pointOfView();
-      earth.pointOfView(
+      let oldCoord: any = earth.value.pointOfView();
+      earth.value.pointOfView(
         { lat: oldCoord.lat, lng: oldCoord.lng, altitude: 2.5 },
         2000
       );
     });
+
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      onWindowResize()
+    });
+    resizeObserver.observe(canvasGlobe.value);
   }
 
   // SECTION Globe
   async function initGlobe() {
-    if (props.countries && props.airports && props.planes) {
       // messageLoad.value = "Chargement du model 'plane.obj'";
 
       // Chargement du model de l'avion avec c'est texture
@@ -170,7 +177,7 @@ onMounted(async () => {
         });
 
         //ajouts des avions sur le globe
-        earth.value.objectsData(props.planes);
+        // earth.value.objectsData(props.planes);
 
         //Création d'un objet 3D pour chaque avion
         earth.value.objectThreeObject((e: any) => {
@@ -190,18 +197,11 @@ onMounted(async () => {
           cube.scale.x = 0.003;
           cube.scale.y = 0.003;
           cube.scale.z = 0.003;
-
-          cube.dataPlane = {
-            alt: e.alt,
-            lat: e.lat,
-            lng: e.lng,
-          };
           return cube;
         });
 
         //   load.value = true;
       });
-    }
   }
 
   async function onWindowResize() {
@@ -214,10 +214,10 @@ watch(
   () => props.planes,
   (first) => {
     earth.value.objectsData(first)
-  }
+  },
 );
 </script>
 
 <template>
-  <div ref="canvasGlobe" class="relative w-4/5 h-full bg-main-primary"></div>
+  <div ref="canvasGlobe" class="h-full duration-300 ease-in-out" :class="planeChoise ? 'w-4/5' : 'w-full'"></div>
 </template>
