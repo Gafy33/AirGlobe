@@ -6,21 +6,22 @@ import Globe from "./components/Globe.vue";
 import Aeroport from "./components/Aeroport.vue";
 import Plane from "./components/Plane.vue";
 
-const planesRef: any = ref([]);
-const ViewList = ref("plane");
-const countries = ref();
-const airports: any = ref();
-const load = ref(false);
-const messageLoad = ref("");
-const search = ref("");
-const time = ref();
+const planesRef: any = ref([]); // Liste des avions
+const ViewList = ref("plane"); // Affiche la liste, soit "avion" soit "aeroport"
+const countries = ref(); // La liste des continents
+const airports: any = ref(); // la liste des aéroports
+const load = ref(false); // Pour attendre le chargement des différents composant
+const messageLoad = ref(""); // Message pour le chargement
+const search = ref(""); // POur la barre de recherche
+const time = ref(); 
 const max = ref(100);
-const objectChoose = ref();
+const objectChoose = ref(); // L'objet choisi, soit une avion, soit un aeroport
 const messageError = ref();
-const indexObject = ref();
+const indexObject = ref(); // index Objet
 
 const showSettings = ref(false);
 
+//Récupere l'identifiant API si il existe dans le local storage sinon null par default
 let auth = localStorage.getItem("auth")
   ? JSON.parse(<string>localStorage.getItem("auth"))
   : null;
@@ -32,30 +33,39 @@ const usernameAPI = auth ? ref(auth.username) : ref();
 const passwordAPI = auth ? ref(auth.password) : ref();
 
 onMounted(async () => {
+
+  //Récupère les continents depuis un fichier
   async function getCountrie() {
     messageLoad.value = "Récupération des continents";
     const { data } = await axios.get("./assets/globe-data-min.json");
     return data;
   }
 
+  //Récupère un aéroports depuis un fichier
   async function getAirport() {
     messageLoad.value = "Récupération des aéroports";
     const { data } = await axios.get("./assets/airport.json");
     return data;
   }
 
+  //Ajoute les continents et les aéroports
   countries.value = await getCountrie();
   airports.value = await getAirport();
   messageLoad.value = "Création de la planète";
 });
 
+//Attend que le globe soit initialiser pour aller demander a l'API Open sky de récupérer les avions. Récupère les avions tous les 5sec
 function intervalGetPlane() {
   setInterval(getPlane, 5000);
 }
 
+
+//Récupère les avions, les formates opur correspondre au globe
 async function getPlane() {
   messageLoad.value = "Récupération des avions";
   let count = 0;
+
+  //Si connecter avec les identifiants sinon sans identifiants
   if (usernameAPI.value && passwordAPI.value) {
     await axios
       .get("https://opensky-network.org/api/states/all", {
@@ -145,11 +155,13 @@ async function getPlane() {
 }
 
 
+//Quand on arrête de choisir un objet
 const HandleobjectChoose = () => {
   objectChoose.value = null;
   indexObject.value = null;
 };
 
+//Sauvegarde les identifiants de l'api
 const saveUsernamePasswordApi = () => {
   localStorage.setItem(
     "auth",
@@ -159,6 +171,8 @@ const saveUsernamePasswordApi = () => {
   usernameAPI.value = username.value;
 };
 
+
+//Choisi un aéroport dans la liste airports depuis son index et défini ObjectChoose 
 const handleChooseAeroport = (index: number) => {
   indexObject.value = index;
   objectChoose.value = {
@@ -167,6 +181,7 @@ const handleChooseAeroport = (index: number) => {
   };
 };
 
+//Choisi un avion dans la liste PlanesRef depuis son index et défini ObjectChoose 
 const handleChoosePlane = (index: number) => {
   indexObject.value = index;
   objectChoose.value = {
@@ -175,6 +190,7 @@ const handleChoosePlane = (index: number) => {
   };
 };
 
+//permet de passer au suivant dans les listes
 const suivantListe = () => {
   if (objectChoose.value && objectChoose.value.type === "plane") {
     if (indexObject.value < max.value) {
@@ -187,6 +203,7 @@ const suivantListe = () => {
   }
 };
 
+//permet de passer au suivant dans les listes
 const precedentListe = () => {
   if (indexObject.value > 0) {
     if (objectChoose.value && objectChoose.value.type === "plane") {
@@ -197,7 +214,10 @@ const precedentListe = () => {
   }
 };
 
+//Permet de récupérer l'objet d'un liste si on clique depuis le globe
 const chooseObjectHandle = (data:any) => {
+
+  //Si l'objet sélectionné est un avion
   if(data.type === 'plane') {
     planesRef.value.forEach((plane:any, index:number) => {
       if(plane.icao24 === data.icao) {
@@ -206,6 +226,7 @@ const chooseObjectHandle = (data:any) => {
     })
   }
 
+  //Si l'objet sélectionné est un aéorport
   if(data.type === 'aeroport') {
     airports.value.airports.forEach((airport:any, index:number) => {
       if(airport.icao === data.icao) {
@@ -214,6 +235,7 @@ const chooseObjectHandle = (data:any) => {
     })
   }
 
+  //Si il déselectionné
   if(data.type === "deselect") {
     objectChoose.value = null;
   }
@@ -467,16 +489,19 @@ const chooseObjectHandle = (data:any) => {
             @click="showSettings = !showSettings"
           ></ion-icon>
         </div>
+        <!-- Menu pour le détails des aérorports -->
         <Aeroport
           :object-choose="objectChoose"
           @closeObjectChoose="HandleobjectChoose"
           :key="objectChoose"
         />
+        <!-- Menu pour le détails des avions -->
         <Plane
           :object-choose="objectChoose"
           @closeObjectChoose="HandleobjectChoose"
           :key="objectChoose"
         />
+        <!-- Le globe en 3D -->
         <Globe
           :airports="airports.airports"
           :countries="countries.features"

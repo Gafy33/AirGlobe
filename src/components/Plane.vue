@@ -36,7 +36,7 @@
           <div
             class="w-full h-[50px] flex items-center px-4 text-white bg-main-primary"
           >
-            Vol de l'avion (30 derniers jours)
+            Vol de l'avion (29 derniers jours)
           </div>
           <div class="w-full h-[calc(100%-50px)] flex flex-col overflow-y-auto">
             <template v-if="loadAirports">
@@ -98,15 +98,18 @@ export default {
   },
   mounted() {
     if (this.objectChoose && this.objectChoose.type === "plane") {
+      //Enlève 29 jours a la date actuel
       function removeDaysToDate(date: string | number | Date, days: number) {
         var res = new Date(date);
         res.setDate(res.getDate() - days);
         return res;
       }
-      let tmpDate = new Date();
-      let newDate = removeDaysToDate(tmpDate, 29);
-      this.dateEnd = Math.trunc(newDate.getTime() / 1000);
+      let tmpDate = new Date(); // Récupère la date actuel 
+      let newDate = removeDaysToDate(tmpDate, 29); // Enlève 29 jours
+      this.dateEnd = Math.trunc(newDate.getTime() / 1000); // Enlève les nombres décimals
       if (this.dateEnd) {
+
+        //Récupères les vols de l'avion depuis les 29 derniers jours
         axios
           .get(
             `https://opensky-network.org/api/flights/aircraft?icao24=${this.objectChoose.plane.icao24}&begin=${this.dateEnd}&end=${this.dateBegin}`

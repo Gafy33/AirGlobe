@@ -19,14 +19,16 @@ const props = defineProps({
 });
 
 onMounted(async () => {
-  await init();
+  await init(); /
   await initGlobe();
 
-  // SECTION Initializing core ThreeJS elements
+  // Initialise les fonctions de click ou resiez pour le globe (window)
   async function init() {
     // messageLoad.value = "Création de la planète";
 
     window.addEventListener("resize", onWindowResize, false);
+
+    //Déselecte et dézoom quand ou double click
     window.addEventListener("dblclick", function (e: any) {
       e.preventDefault();
       emit("chooseObject", { type: "deselect" });
@@ -37,6 +39,7 @@ onMounted(async () => {
       );
     });
 
+    //Resize le globe quand le menu détail est ouvert ou fermé
     const resizeObserver = new ResizeObserver((entries) => {
       onWindowResize();
     });
@@ -45,16 +48,17 @@ onMounted(async () => {
 
   // SECTION Globe
   async function initGlobe() {
-    // messageLoad.value = "Chargement du model 'plane.obj'";
 
-    // Chargement du model de l'avion avec c'est texture
+    // Chargement du model de l'avion
     var objLoader = new OBJLoader();
     objLoader.setPath("./plane/");
     objLoader.load("11805_airplane_v2_L2.obj", async function (object: any) {
-      //   messageLoad.value = "Ajout des continents";
 
       // Création du Globe
       // Ajout des continents
+      // Modifie les paramètres du globe
+      // Modifie les hover ou click de chache objet 3D ( plane )
+      //Gestion du globe et des objets dans le globe ( objet three )
       earth.value = Globe()
         .backgroundColor("rgba(0,0,0,0)")
         .width(canvasGlobe.value.clientWidth)
@@ -65,12 +69,12 @@ onMounted(async () => {
         .objectRotation((e: any) => {
           e.__threeObj.rotation.z = (e.true_track * 6.25) / 100;
           return e;
-        })
+        }) // Tourne l'avion
         .objectFacesSurface(true)
         .showAtmosphere(true)
         .atmosphereColor("#3a228a")
         .atmosphereAltitude(0.25)
-        .hexPolygonsData(props.countries)
+        .hexPolygonsData(props.countries) // Les continents
         .hexPolygonResolution(3)
         .hexPolygonMargin(0.5)
         .hexPolygonColor((e: any) => {
@@ -80,13 +84,13 @@ onMounted(async () => {
           return `
             <div><b>${d.text}</b></div>
           `;
-        })
+        }) // affichage du text quand la souris passe sur un aéroport
         .pointColor((e) => {
           return "#00ff00";
         })
         .onGlobeReady(() => {
           emit("globeReady");
-        })
+        }) // Quand le globe est ready
         .pointAltitude(0.001)
         .pointRadius(0.2)
         .pathColor(() => ["rgba(0,0,255,0.6)", "rgba(255,0,0,0.6)"])
@@ -95,7 +99,7 @@ onMounted(async () => {
         .pathDashAnimateTime(100000)
         .pathPointLat((arr) => arr[0])
         .pathPointLng((arr) => arr[1])
-        .pathPointAlt((arr) => arr[2])
+        .pathPointAlt((arr) => arr[2]) // Path de l'avion ( son parcours )
         .pathStroke(8)
         .onObjectHover((object: any, prevObject: any) => {
           if (object) {
@@ -141,8 +145,8 @@ onMounted(async () => {
           emit("chooseObject", { type: "aeroport", icao: obj.icao });
         })(canvasGlobe.value);
 
-      //   messageLoad.value = "Ajout des avions";
 
+      //Materiel du globe pour three JS 
       const globeMaterial = earth.value.globeMaterial();
       globeMaterial.color = new Color(0x3a228a);
       globeMaterial.emissive = new Color(0x220038);
@@ -168,7 +172,6 @@ onMounted(async () => {
           );
 
           lastPLane.value = e;
-          // getTrackPlane(e.icao24);
         } else {
           MeshBras = new Mesh(
             object.children[1].geometry,
@@ -190,10 +193,10 @@ onMounted(async () => {
         return cube;
       });
 
-      //   load.value = true;
     });
   }
 
+  //Resize le globe si on modifie la taille de la fenetre
   async function onWindowResize() {
     if (earth.value) {
       earth.value.width(canvasGlobe.value.clientWidth);
@@ -202,6 +205,7 @@ onMounted(async () => {
   }
 });
 
+//Rajoute les avions quand il reçoit les nouveaux avions depuis l'api ( tous les 5 sec ). Met à jour l'affichage des avions
 watch(
   () => props.planes,
   (newValue) => {
@@ -211,6 +215,8 @@ watch(
   }
 );
 
+//Met à jour l'objet choisi pour montrer à l'utilisateur soit l'avion soit l'aéroport choisi sur le globe
+// Fixe la caméra sur l'objet en question
 watch(
   () => props.objectChoose,
   (newValue) => {
@@ -241,6 +247,8 @@ watch(
               { lat: data.lat, lng: data.lng, altitude: 0.3 },
               2000
             );
+
+            //défini le parcours de l'avions
             getTrackPlane(data.icao24);
           }
         });
@@ -278,6 +286,8 @@ watch(
   }
 );
 
+
+//Récupère le parcours de l'avion depuis l'api et dessine le parcours sur le globe
 async function getTrackPlane(icao24: number) {
   await axios
     .get(`https://opensky-network.org/api/tracks/all?icao24=${icao24}&time=0`)

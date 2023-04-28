@@ -139,15 +139,19 @@ export default {
   },
   mounted() {
     if (this.objectChoose && this.objectChoose.type === "aeroport") {
+      //Ajoute 1 jour a la date actuel
       function addDaysToDate(date: string | number | Date, days: number) {
         var res = new Date(date);
         res.setDate(res.getDate() + days);
         return res;
       }
-      let tmpDate = new Date(new Date().toDateString());
-      let newDate = addDaysToDate(tmpDate, 1);
-      this.dateEnd = newDate.getTime() / 1000;
+
+      let tmpDate = new Date(new Date().toDateString()); // Récupère la date actuel à 0h00
+      let newDate = addDaysToDate(tmpDate, 1); // Ajoute 1Jour 
+      this.dateEnd = newDate.getTime() / 1000; // Enlève les nombres décimals
       if (this.dateEnd) {
+
+        // Récupère les avions qui arrivent dans l'aéroport entre les dates
         axios
           .get(
             `https://opensky-network.org/api/flights/arrival?airport=${this.objectChoose.airport.icao}&begin=${this.dateBegin}&end=${this.dateEnd}`
@@ -160,6 +164,8 @@ export default {
             this.errorArrival = "Aucune arrivé de prévue";
             this.loadArrival = true;
           });
+
+        // Récupère les avions qui partent de l'aéroport entre les dates
         axios
           .get(
             `https://opensky-network.org/api/flights/departure?airport=${this.objectChoose.airport.icao}&begin=${this.dateBegin}&end=${this.dateEnd}`
