@@ -96,7 +96,7 @@ export default {
       errorAirports: "",
     };
   },
-  mounted() {
+  async mounted() {
     if (this.objectChoose && this.objectChoose.type === "plane") {
       //Enlève 29 jours a la date actuel
       function removeDaysToDate(date: string | number | Date, days: number) {
@@ -110,7 +110,7 @@ export default {
       if (this.dateEnd) {
 
         //Récupères les vols de l'avion depuis les 29 derniers jours
-        axios
+        await axios
           .get(
             `https://opensky-network.org/api/flights/aircraft?icao24=${this.objectChoose.plane.icao24}&begin=${this.dateEnd}&end=${this.dateBegin}`
           )

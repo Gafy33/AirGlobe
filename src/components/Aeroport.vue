@@ -137,7 +137,7 @@ export default {
       errorDeparture: "",
     };
   },
-  mounted() {
+  async mounted() {
     if (this.objectChoose && this.objectChoose.type === "aeroport") {
       //Ajoute 1 jour a la date actuel
       function addDaysToDate(date: string | number | Date, days: number) {
@@ -152,7 +152,7 @@ export default {
       if (this.dateEnd) {
 
         // Récupère les avions qui arrivent dans l'aéroport entre les dates
-        axios
+        await axios
           .get(
             `https://opensky-network.org/api/flights/arrival?airport=${this.objectChoose.airport.icao}&begin=${this.dateBegin}&end=${this.dateEnd}`
           )
