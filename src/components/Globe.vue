@@ -75,7 +75,7 @@ onMounted(async () => {
         .atmosphereColor("#3a228a")
         .atmosphereAltitude(0.25)
         .hexPolygonsData(props.countries) // Les continents
-        .hexPolygonResolution(3)
+        .hexPolygonResolution(4)
         .hexPolygonMargin(0.5)
         .hexPolygonColor((e: any) => {
           return "rgba(255,255,255, 0.5)";
