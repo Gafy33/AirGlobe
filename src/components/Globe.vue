@@ -19,7 +19,7 @@ const props = defineProps({
 });
 
 onMounted(async () => {
-  await init(); /
+  await init();
   await initGlobe();
 
   // Initialise les fonctions de click ou resiez pour le globe (window)
